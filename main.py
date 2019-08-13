@@ -18,6 +18,7 @@ class CellButton(Button):
     color_normal = 1, 1, 1, 1
     color_flagged = 1, 0, 0, 1
     color_revealed = .6, .6, .6, 1
+    color_mine = 1, .6, 0, 1
 
     flag_count = 0
 
@@ -68,6 +69,14 @@ class CellButton(Button):
                 return True
         return super(CellButton, self).on_touch_up(touch)
 
+    def show(self):
+        if self.value == MineGrid.mine_id:
+            if not self.flagged:
+                self.background_color = CellButton.color_mine
+        else:
+            self.background_color = CellButton.color_revealed
+        self.text = str(self.value)
+
     def reveal(self):
 
         # commit first blood if not committed
@@ -80,9 +89,7 @@ class CellButton(Button):
         elif CellButton.flag_count == MineGrid.ref.mines:
             MineGrid.ref.end(win=True)
 
-        # show number
-        self.background_color = CellButton.color_revealed
-        self.text = str(self.value)
+        self.show()
 
         # reveal cells around if blank
         if not self.value and self.hidden:
@@ -115,9 +122,10 @@ class MineGrid(GridLayout):
             for y in range(self.msize):
                 coordinates.append("{},{}".format(x, y))
         random.shuffle(coordinates)
+        self.mine_pos = coordinates[:self.mines]
 
         # insert mines
-        for pos in coordinates[:self.mines]:
+        for pos in self.mine_pos:
             x, y = map(int, pos.split(','))
             self.mine_map[x][y] = MineGrid.mine_id
 
@@ -181,6 +189,14 @@ class MineGrid(GridLayout):
 
     def end(self, win=False):
         self.ended = True
+
+        # reveal all mines
+        for pos in self.mine_pos:
+            x, y = map(int, pos.split(','))
+            cell_index = len(self.children) - (x * self.msize + y) - 1
+            self.children[cell_index].show()
+
+        # show win loss statement
         if win:
             msg = "You have won the game!"
         else:
@@ -191,7 +207,19 @@ class MineGrid(GridLayout):
         popup.open()
 
 
-class SizeInput()
+class SizeInput(TextInput):
+
+    limit = 20
+
+    def on_text(self, *args):
+        try:
+            if int(self.text) <= SizeInput.limit:
+                self.mine_slider.max = int(.3 * int(self.text) ** 2)
+                self.mine_slider.value = int(.15 * int(self.text) ** 2)
+            else:
+                self.text = self.text[:-1]
+        except ValueError:
+            self.text = self.text[:-1]
 
 
 class MineSweeperApp(App):

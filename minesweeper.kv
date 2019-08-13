@@ -3,7 +3,7 @@ BoxLayout:
     MineGrid:
         id: mine_area
         msize: int(_size_input.text)
-        mines: int(_mine_input.text)
+        mines: int(_mine_slider.value)
 
         rows: 15
         cols: 15
@@ -32,7 +32,9 @@ BoxLayout:
 
             SizeInput:
                 id: _size_input
+                mine_slider: _mine_slider
 
+                write_tab: False
                 text: "15"
                 size_hint_y: None
                 height: 50
@@ -46,14 +48,19 @@ BoxLayout:
                 size_hint_y: None
                 height: 50
 
+            BoxLayout:
+                orientation: "vertical"
 
-            MineInput:
-                id: _mine_input
-                size_input: _size_input
+                Label:
+                    text: "{} / {}".format(_mine_slider.value, _mine_slider.max)
 
-                text: "35"
-                size_hint_y: None
-                height: 50
+                Slider:
+                    id: _mine_slider
+
+                    min: 1
+                    max: 90
+                    value: 35
+                    step: 1
 
         Button:
             text: "Generate"
