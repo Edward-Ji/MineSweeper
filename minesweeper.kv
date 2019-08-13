@@ -1,0 +1,62 @@
+BoxLayout:
+
+    MineGrid:
+        id: mine_area
+        msize: int(_size_input.text)
+        mines: int(_mine_input.text)
+
+        rows: 15
+        cols: 15
+        size_hint_x: None
+        width: self.height
+
+    BoxLayout:
+        orientation: "vertical"
+        size_hint_y: None
+        height: self.minimum_height
+        pos_hint: {"top": 1}
+
+        Label:
+            text: "Tool Box"
+            size_hint_y: None
+            height: 50
+
+        BoxLayout:
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Size"
+                size_hint_y: None
+                height: 50
+
+            SizeInput:
+                id: _size_input
+
+                text: "15"
+                size_hint_y: None
+                height: 50
+
+        BoxLayout:
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Mines"
+                size_hint_y: None
+                height: 50
+
+
+            MineInput:
+                id: _mine_input
+                size_input: _size_input
+
+                text: "35"
+                size_hint_y: None
+                height: 50
+
+        Button:
+            text: "Generate"
+            size_hint_y: None
+            height: 50
+            on_release: mine_area.generate()
