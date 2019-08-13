@@ -1,9 +1,13 @@
+<MyLabel@Label>:
+    text_size: self.size
+    halign: "left"
+
 BoxLayout:
 
     MineGrid:
         id: mine_area
-        msize: int(_size_input.text)
-        mines: int(_mine_slider.value)
+        msize: _size_slider.value
+        mines: _mine_slider.value
 
         rows: 15
         cols: 15
@@ -12,41 +16,55 @@ BoxLayout:
 
     BoxLayout:
         orientation: "vertical"
+        padding: 10
+        spacing: 20
         size_hint_y: None
         height: self.minimum_height
         pos_hint: {"top": 1}
 
-        Label:
-            text: "Tool Box"
+        MyLabel:
+            markup: True
+            text: "[b]Sweep\nThy\nMines![/b]"
+            font_size: "35dp"
             size_hint_y: None
-            height: 50
+            height: 135
+            halign: "center"
 
         BoxLayout:
             size_hint_y: None
             height: self.minimum_height
 
-            Label:
-                text: "Size"
-                size_hint_y: None
-                height: 50
+            MyLabel:
+                text: "Size (side)"
+                size_hint: None, None
+                size: 50, 60
 
-            SizeInput:
-                id: _size_input
-                mine_slider: _mine_slider
+            BoxLayout:
+                orientation: "vertical"
 
-                write_tab: False
-                text: "15"
-                size_hint_y: None
-                height: 50
+                Label:
+                    text: "{} / {}".format(_size_slider.value, _size_slider.max)
+
+                Slider:
+                    id: _size_slider
+
+                    min: 5
+                    max: 20
+                    value: 15
+                    step: 1
+
+                    on_value:
+                        _mine_slider.max = int(.3 * self.value ** 2)
+                        _mine_slider.value = int(.15 * self.value ** 2)
 
         BoxLayout:
             size_hint_y: None
             height: self.minimum_height
 
-            Label:
+            MyLabel:
                 text: "Mines"
-                size_hint_y: None
-                height: 50
+                size_hint: None, None
+                size: 50, 60
 
             BoxLayout:
                 orientation: "vertical"
@@ -58,12 +76,12 @@ BoxLayout:
                     id: _mine_slider
 
                     min: 1
-                    max: 90
-                    value: 35
+                    max: 67
+                    value: 33
                     step: 1
 
         Button:
-            text: "Generate"
+            text: "New Game"
             size_hint_y: None
             height: 50
-            on_release: mine_area.generate()
+            on_release: mine_area.new_game()

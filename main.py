@@ -2,14 +2,16 @@ import kivy
 import random
 
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.config import Config
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.textinput import TextInput
 
 kivy.require("1.11.1")
+# disable multi-touch to enable right click
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
 
 
@@ -19,8 +21,6 @@ class CellButton(Button):
     color_flagged = 1, 0, 0, 1
     color_revealed = .6, .6, .6, 1
     color_mine = 1, .6, 0, 1
-
-    flag_count = 0
 
     def __init__(self, **kwargs):
         self.value = kwargs.pop("value")
@@ -32,13 +32,13 @@ class CellButton(Button):
 
     def on_release(self):
 
+        # disable if game ended
+        if MineGrid.ref.ended:
+            return
+
         # prevent first step not blank
         if not MineGrid.ref.first_blood and self.value:
             MineGrid.ref.generate(test_pos=(self.pos_x, self.pos_y))
-            return
-
-        # disable if game ended
-        if MineGrid.ref.ended:
             return
 
         # response accordingly
@@ -79,6 +79,9 @@ class CellButton(Button):
 
     def reveal(self):
 
+        if self.hidden:
+            MineGrid.ref.reveal_count += 1
+
         # commit first blood if not committed
         if not MineGrid.ref.first_blood:
             MineGrid.ref.first_blood = True
@@ -86,9 +89,10 @@ class CellButton(Button):
         # win loss condition
         if self.value == MineGrid.mine_id:
             MineGrid.ref.end()
-        elif CellButton.flag_count == MineGrid.ref.mines:
+        elif MineGrid.ref.reveal_count + MineGrid.ref.mines == MineGrid.ref.msize ** 2:
             MineGrid.ref.end(win=True)
 
+        # show this cell
         self.show()
 
         # reveal cells around if blank
@@ -106,21 +110,67 @@ class MineGrid(GridLayout):
 
     def __init__(self, **kwargs):
         self.mine_map = [[]]
+        self.mine_pos = []
         self.first_blood = False
         self.ended = False
+        self.reveal_count = 0
         MineGrid.ref = self
+        Clock.schedule_once(lambda _: self.generate())
         super(MineGrid, self).__init__(**kwargs)
 
+    def new_game(self):
+
+        # need confirmation if game has not ended
+        if not self.ended:
+            # create layout
+            pop_layout = BoxLayout(orientation="vertical")
+            btn_layout = BoxLayout(size_hint_y=None, height=50)
+            confirm_btn = Button(text="Confirm")
+            cancel_btn = Button(text="Cancel")
+            pop_layout.add_widget(Label(text="Current game has not ended.\n"
+                                             "Generating a new game will overwrite existing game.\n"
+                                             "Are you sure?"))
+            btn_layout.add_widget(confirm_btn)
+            btn_layout.add_widget(cancel_btn)
+            pop_layout.add_widget(btn_layout)
+
+            # create and open popup
+            popup = Popup(title="Warning",
+                          content=pop_layout,
+                          size_hint=(.5, .5))
+            popup.open()
+
+            # bind functions to buttons
+            confirm_btn.bind(on_press=lambda _: self.generate())
+            confirm_btn.bind(on_press=popup.dismiss)
+            cancel_btn.bind(on_press=popup.dismiss)
+        else:
+            self.generate()
+
     def generate(self, test_pos=None):
+
         self.mine_map = [[None for _ in range(self.msize)] for _ in range(self.msize)]
         self.first_blood = False
         self.ended = False
+        self.reveal_count = 0
 
         # generate random coordinates for mines
         coordinates = []
         for x in range(self.msize):
             for y in range(self.msize):
                 coordinates.append("{},{}".format(x, y))
+
+        if test_pos:  # avoid generating mine at first cell
+            center_x, center_y = test_pos
+            coordinates.remove("{},{}".format(center_x, center_y))
+            for x_shift, y_shift in MineGrid.around:
+                try:
+                    neighbor_x, neighbor_y = center_x + x_shift, center_y + y_shift
+                    if neighbor_x < 0 or neighbor_y < 0 or neighbor_x >= self.msize or neighbor_y >= self.msize:
+                        continue
+                    coordinates.remove("{},{}".format(neighbor_x, neighbor_y))
+                except IndexError:
+                    pass
         random.shuffle(coordinates)
         self.mine_pos = coordinates[:self.mines]
 
@@ -158,11 +208,10 @@ class MineGrid(GridLayout):
                 y += 1
             x += 1
 
-        # test clicked position if there is any
+        # if pressed reveal cell
         if test_pos:
-            pos_x, pos_y = test_pos
-            cell_index = len(self.children) - (pos_x * self.msize + pos_y) - 1
-            self.children[cell_index].on_release()
+            center_index = len(self.children) - (center_x * self.msize + center_y) - 1
+            self.children[center_index].reveal()
 
     def around_cells(self, pos_x, pos_y):
         for x_shift, y_shift in MineGrid.around:
@@ -189,37 +238,23 @@ class MineGrid(GridLayout):
 
     def end(self, win=False):
         self.ended = True
-
-        # reveal all mines
-        for pos in self.mine_pos:
-            x, y = map(int, pos.split(','))
-            cell_index = len(self.children) - (x * self.msize + y) - 1
-            self.children[cell_index].show()
+        self.reveal_count = 0
 
         # show win loss statement
         if win:
             msg = "You have won the game!"
         else:
-            msg = "Sorry. you have blown yourself up!"
+            # reveal all mines
+            for pos in self.mine_pos:
+                x, y = map(int, pos.split(','))
+                cell_index = len(self.children) - (x * self.msize + y) - 1
+                self.children[cell_index].show()
+            msg = "You have blown up yourself!"
+        msg += "\n\n[i]Click anywhere ELSE to close this popup.[/i]"
         popup = Popup(title="Game Ended",
-                      content=Label(text=msg),
+                      content=Label(markup=True, text=msg),
                       size_hint=(.5, .5))
         popup.open()
-
-
-class SizeInput(TextInput):
-
-    limit = 20
-
-    def on_text(self, *args):
-        try:
-            if int(self.text) <= SizeInput.limit:
-                self.mine_slider.max = int(.3 * int(self.text) ** 2)
-                self.mine_slider.value = int(.15 * int(self.text) ** 2)
-            else:
-                self.text = self.text[:-1]
-        except ValueError:
-            self.text = self.text[:-1]
 
 
 class MineSweeperApp(App):
