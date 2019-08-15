@@ -13,6 +13,8 @@ from kivy.uix.popup import Popup
 kivy.require("1.11.1")
 # disable multi-touch to enable right click
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
+Config.set('graphics', 'width', '1280')
+Config.set('graphics', 'height', '800')
 
 
 class CellButton(Button):
@@ -28,6 +30,9 @@ class CellButton(Button):
         self.pos_y = kwargs.pop("pos_y")
         self.hidden = True
         self.flagged = False
+        # dynamic font size
+        self.height = MineGrid.ref.height / MineGrid.ref.msize
+        self.font_size = self.height
         super(CellButton, self).__init__(**kwargs)
 
     def on_release(self):
@@ -85,6 +90,7 @@ class CellButton(Button):
         # commit first blood if not committed
         if not MineGrid.ref.first_blood:
             MineGrid.ref.first_blood = True
+            MineGrid.ref.stats_refresh()
 
         # win loss condition
         if self.value == MineGrid.mine_id:
@@ -115,8 +121,39 @@ class MineGrid(GridLayout):
         self.ended = False
         self.reveal_count = 0
         MineGrid.ref = self
+
+        # schedule events
+        self.stats_refresh = Clock.schedule_interval(self.stats, 0)
+        self.stats_refresh.cancel()
         Clock.schedule_once(lambda _: self.generate())
         super(MineGrid, self).__init__(**kwargs)
+
+    def around_cells(self, pos_x, pos_y):
+        for x_shift, y_shift in MineGrid.around:
+            try:
+                neighbor_x, neighbor_y = pos_x + x_shift, pos_y + y_shift
+                if neighbor_x < 0 or neighbor_y < 0 or neighbor_x >= self.msize or neighbor_y >= self.msize:
+                    continue
+                cell_index = len(self.children) - (neighbor_x * self.msize + neighbor_y) - 1
+                yield self.children[cell_index]
+            except IndexError:
+                pass
+
+    def reveal_around(self, pos_x, pos_y):
+        for cell in self.around_cells(pos_x, pos_y):
+            if not cell.flagged:
+                cell.reveal()
+
+    def flagged_around(self, pos_x, pos_y):
+        count = 0
+        for cell in self.around_cells(pos_x, pos_y):
+            if cell.flagged:
+                count += 1
+        return count
+
+    def stats(self, d_time):
+        self.timer.value += d_time
+        self.revealed.value = self.reveal_count
 
     def new_game(self):
 
@@ -148,6 +185,8 @@ class MineGrid(GridLayout):
             self.generate()
 
     def generate(self, test_pos=None):
+
+        self.revealed.max = self.msize ** 2 - self.mines
 
         self.mine_map = [[None for _ in range(self.msize)] for _ in range(self.msize)]
         self.first_blood = False
@@ -213,36 +252,20 @@ class MineGrid(GridLayout):
             center_index = len(self.children) - (center_x * self.msize + center_y) - 1
             self.children[center_index].reveal()
 
-    def around_cells(self, pos_x, pos_y):
-        for x_shift, y_shift in MineGrid.around:
-            try:
-                neighbor_x, neighbor_y = pos_x + x_shift, pos_y + y_shift
-                if neighbor_x < 0 or neighbor_y < 0 or neighbor_x >= self.msize or neighbor_y >= self.msize:
-                    continue
-                cell_index = len(self.children) - (neighbor_x * self.msize + neighbor_y) - 1
-                yield self.children[cell_index]
-            except IndexError:
-                pass
-
-    def reveal_around(self, pos_x, pos_y):
-        for cell in self.around_cells(pos_x, pos_y):
-            if not cell.flagged:
-                cell.reveal()
-
-    def flagged_around(self, pos_x, pos_y):
-        count = 0
-        for cell in self.around_cells(pos_x, pos_y):
-            if cell.flagged:
-                count += 1
-        return count
+        # reset timer
+        self.timer.value = 0
 
     def end(self, win=False):
+        self.stats_refresh.cancel()
         self.ended = True
         self.reveal_count = 0
+        self.revealed.value = 0
+        self.revealed.max = 0
 
         # show win loss statement
         if win:
             msg = "You have won the game!"
+            msg += "\nYou spent {} seconds on this map.".format(int(self.timer.value))
         else:
             # reveal all mines
             for pos in self.mine_pos:

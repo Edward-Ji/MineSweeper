@@ -2,18 +2,65 @@
     text_size: self.size
     halign: "left"
 
+<MySlider@BoxLayout>:
+    slider: _slider
+
+    size_hint_y: None
+    height: 60
+    hint: ''
+    min: 0
+    max: 0
+    value: 0
+
+    MyLabel:
+        markup: True
+        text: '[b]' + root.hint + '[/b]'
+        size_hint_x: None
+        width: 95
+
+    BoxLayout:
+        orientation: "vertical"
+
+        BoxLayout:
+
+            MyLabel:
+                text: "min: {}".format(root.min)
+                halign: "left"
+
+            MyLabel:
+                text: "set: {}".format(root.value)
+                halign: "center"
+
+            MyLabel:
+                text: "max: {}".format(root.max)
+                halign: "right"
+
+        Slider:
+            id: _slider
+
+            min: root.min
+            max: root.max
+            value: root.value
+            step: 1
+
+            on_value: root.value = self.value
+
 BoxLayout:
 
+    # main game mine grid starts here
     MineGrid:
-        id: mine_area
+        id: mine_grid
         msize: _size_slider.value
         mines: _mine_slider.value
+        timer: _timer
+        revealed: _revealed
 
         rows: 15
         cols: 15
         size_hint_x: None
         width: self.height
 
+    # tool panel starts ere
     BoxLayout:
         orientation: "vertical"
         padding: 10
@@ -22,7 +69,8 @@ BoxLayout:
         height: self.minimum_height
         pos_hint: {"top": 1}
 
-        MyLabel:
+        # settings control section starts here
+        MyLabel:  # title
             markup: True
             text: "[b]Sweep\nThy\nMines![/b]"
             font_size: "35dp"
@@ -30,58 +78,54 @@ BoxLayout:
             height: 135
             halign: "center"
 
-        BoxLayout:
-            size_hint_y: None
-            height: self.minimum_height
+        MySlider:  # slider for side length
+            id: _size_slider
 
-            MyLabel:
-                text: "Size (side)"
-                size_hint: None, None
-                size: 50, 60
+            hint: "Side length"
+            min: 5
+            max: 20
+            value: 15
 
-            BoxLayout:
-                orientation: "vertical"
+            on_value:
+                _mine_slider.max = int(.3 * self.value ** 2)
+                _mine_slider.value = int(.15 * self.value ** 2)
 
-                Label:
-                    text: "{} / {}".format(_size_slider.value, _size_slider.max)
+        MySlider:  # slider for number of mines
+            id: _mine_slider
 
-                Slider:
-                    id: _size_slider
+            hint: "No. of mines"
+            min: 1
+            max: 67
+            value: 33
 
-                    min: 5
-                    max: 20
-                    value: 15
-                    step: 1
-
-                    on_value:
-                        _mine_slider.max = int(.3 * self.value ** 2)
-                        _mine_slider.value = int(.15 * self.value ** 2)
-
-        BoxLayout:
-            size_hint_y: None
-            height: self.minimum_height
-
-            MyLabel:
-                text: "Mines"
-                size_hint: None, None
-                size: 50, 60
-
-            BoxLayout:
-                orientation: "vertical"
-
-                Label:
-                    text: "{} / {}".format(_mine_slider.value, _mine_slider.max)
-
-                Slider:
-                    id: _mine_slider
-
-                    min: 1
-                    max: 67
-                    value: 33
-                    step: 1
-
-        Button:
+        Button:  # new game button
             text: "New Game"
             size_hint_y: None
             height: 50
-            on_release: mine_area.new_game()
+            on_release: mine_grid.new_game()
+
+        # statistics section starts here
+        MyLabel:
+            markup: True
+            text: "[b]Statistics[/b]"
+            font_size: "24dp"
+            size_hint_y: None
+            height: 35
+            halign: "center"
+
+        MyLabel:
+            id: _timer
+
+            value: 0
+
+            markup: True
+            text: "[b]Time:[/b] " + str(int(self.value)) + 's'
+
+        MyLabel:
+            id: _revealed
+
+            value: 0
+            max: 0
+
+            markup: True
+            text: "[b]Revealed:[/b] " + str(self.value) + " / " + str(self.max)
