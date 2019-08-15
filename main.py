@@ -10,11 +10,11 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
-kivy.require("1.11.1")
+kivy.require("1.10.1")
 # disable multi-touch to enable right click
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
-Config.set('graphics', 'width', '1280')
-Config.set('graphics', 'height', '800')
+Config.set('graphics', 'width', '960')
+Config.set('graphics', 'height', '600')
 
 
 class CellButton(Button):
@@ -65,7 +65,7 @@ class CellButton(Button):
         if MineGrid.ref.ended:
             return True
         if touch.button == "right" and self.collide_point(*touch.pos):
-            if self.hidden:
+            if self.hidden and MineGrid.ref.first_blood:
                 self.flagged = not self.flagged
                 if self.flagged:
                     self.background_color = CellButton.color_flagged
@@ -118,14 +118,13 @@ class MineGrid(GridLayout):
         self.mine_map = [[]]
         self.mine_pos = []
         self.first_blood = False
-        self.ended = False
+        self.ended = True
         self.reveal_count = 0
         MineGrid.ref = self
 
         # schedule events
         self.stats_refresh = Clock.schedule_interval(self.stats, 0)
         self.stats_refresh.cancel()
-        Clock.schedule_once(lambda _: self.generate())
         super(MineGrid, self).__init__(**kwargs)
 
     def around_cells(self, pos_x, pos_y):
