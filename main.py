@@ -11,8 +11,11 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
 kivy.require("1.10.1")
+
 # disable multi-touch to enable right click
 Config.set('input', 'mouse', 'mouse,disable_multitouch')
+
+# set screen size
 Config.set('graphics', 'width', '960')
 Config.set('graphics', 'height', '600')
 
@@ -63,6 +66,7 @@ class CellButton(Button):
         if MineGrid.ref.ended:
             return True
         if touch.button == "right" and self.collide_point(*touch.pos):
+            # color change at start of pending flagging action
             if MineGrid.ref.first_blood and self.hidden:
                 self.flagging = True
                 self.background_color = CellButton.color_flagging
@@ -75,7 +79,9 @@ class CellButton(Button):
         if touch.button == "right":
             if self.flagging:
                 if self.collide_point(*touch.pos):
+                    # remain flag changing color for pending actions
                     self.background_color = CellButton.color_flagging
+                # revert flag color if action is about to be abandoned
                 elif self.flagged:
                     self.background_color = CellButton.color_flagged
                 else:
@@ -87,9 +93,11 @@ class CellButton(Button):
         if MineGrid.ref.ended:
             return True
         if touch.button == "right" and self.collide_point(*touch.pos):
+            # flagging action
             if self.flagging and MineGrid.ref.first_blood:
                 self.flagging = False
                 self.flagged = not self.flagged
+                # inverse flag color
                 if self.flagged:
                     self.background_color = CellButton.color_flagged
                 else:
@@ -97,6 +105,7 @@ class CellButton(Button):
                 return True
         return super(CellButton, self).on_touch_up(touch)
 
+    # display cell number or mine and background
     def show(self):
         if self.value == MineGrid.mine_id:
             if not self.flagged:
@@ -151,10 +160,12 @@ class MineGrid(GridLayout):
         super(MineGrid, self).__init__(**kwargs)
 
     def on_width(self, *args):
+        # dynamically changes font size upon window resize
         for cell in self.children:
             cell.font_resize()
         return args
 
+    # return cells around a given cell as widgets
     def around_cells(self, pos_x, pos_y):
         for x_shift, y_shift in MineGrid.around:
             try:
@@ -166,11 +177,13 @@ class MineGrid(GridLayout):
             except IndexError:
                 pass
 
+    # provoke the reveal function of cells around a given cell
     def reveal_around(self, pos_x, pos_y):
         for cell in self.around_cells(pos_x, pos_y):
             if not cell.flagged:
                 cell.reveal()
 
+    # count the cells that are flagged around a given cell
     def flagged_around(self, pos_x, pos_y):
         count = 0
         for cell in self.around_cells(pos_x, pos_y):
@@ -178,10 +191,12 @@ class MineGrid(GridLayout):
                 count += 1
         return count
 
+    # renew statistics section
     def stats(self, d_time):
         self.timer.value += d_time * .5
         self.revealed.value = self.reveal_count
 
+    # start a new game
     def new_game(self):
 
         # need confirmation if game has not ended
@@ -211,6 +226,7 @@ class MineGrid(GridLayout):
         else:
             self.generate()
 
+    # generate a new mine map
     def generate(self, test_pos=None):
 
         self.revealed.max = self.msize ** 2 - self.mines
