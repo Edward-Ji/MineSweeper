@@ -23,6 +23,7 @@ class CellButton(Button):
     color_flagged = 1, 0, 0, 1
     color_revealed = .6, .6, .6, 1
     color_mine = 1, .6, 0, 1
+    color_flagging = 1, .5, .5, 1
 
     def __init__(self, **kwargs):
         self.value = kwargs.pop("value")
@@ -30,10 +31,14 @@ class CellButton(Button):
         self.pos_y = kwargs.pop("pos_y")
         self.hidden = True
         self.flagged = False
-        # dynamic font size
-        self.height = MineGrid.ref.height / MineGrid.ref.msize
-        self.font_size = self.height
+        self.flagging = False
+        self.font_resize()
         super(CellButton, self).__init__(**kwargs)
+
+    def font_resize(self):
+        # dynamically resize font size using its height
+        length = MineGrid.ref.height / MineGrid.ref.msize
+        self.font_size = .65 * length
 
     def on_release(self):
 
@@ -57,15 +62,33 @@ class CellButton(Button):
     def on_touch_down(self, touch):
         if MineGrid.ref.ended:
             return True
-        if touch.button == "right":
+        if touch.button == "right" and self.collide_point(*touch.pos):
+            if MineGrid.ref.first_blood and self.hidden:
+                self.flagging = True
+                self.background_color = CellButton.color_flagging
             return True
         super(CellButton, self).on_touch_down(touch)
+
+    def on_touch_move(self, touch):
+        if MineGrid.ref.ended:
+            return True
+        if touch.button == "right":
+            if self.flagging:
+                if self.collide_point(*touch.pos):
+                    self.background_color = CellButton.color_flagging
+                elif self.flagged:
+                    self.background_color = CellButton.color_flagged
+                else:
+                    self.background_color = CellButton.color_normal
+                return True
+        super(CellButton, self).on_touch_move(touch)
 
     def on_touch_up(self, touch):
         if MineGrid.ref.ended:
             return True
         if touch.button == "right" and self.collide_point(*touch.pos):
-            if self.hidden and MineGrid.ref.first_blood:
+            if self.flagging and MineGrid.ref.first_blood:
+                self.flagging = False
                 self.flagged = not self.flagged
                 if self.flagged:
                     self.background_color = CellButton.color_flagged
@@ -127,6 +150,11 @@ class MineGrid(GridLayout):
         self.stats_refresh.cancel()
         super(MineGrid, self).__init__(**kwargs)
 
+    def on_width(self, *args):
+        for cell in self.children:
+            cell.font_resize()
+        return args
+
     def around_cells(self, pos_x, pos_y):
         for x_shift, y_shift in MineGrid.around:
             try:
@@ -151,7 +179,7 @@ class MineGrid(GridLayout):
         return count
 
     def stats(self, d_time):
-        self.timer.value += d_time
+        self.timer.value += d_time * .5
         self.revealed.value = self.reveal_count
 
     def new_game(self):
@@ -209,6 +237,7 @@ class MineGrid(GridLayout):
                     coordinates.remove("{},{}".format(neighbor_x, neighbor_y))
                 except IndexError:
                     pass
+
         random.shuffle(coordinates)
         self.mine_pos = coordinates[:self.mines]
 
