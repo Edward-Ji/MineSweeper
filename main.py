@@ -33,10 +33,22 @@ class CellButton(Button):
         self.pos_x = kwargs.pop("pos_x")
         self.pos_y = kwargs.pop("pos_y")
         self.hidden = True
-        self.flagged = False
+        self._flagged = False
         self.flagging = False
         self.font_resize()
         super(CellButton, self).__init__(**kwargs)
+
+    @property
+    def flagged(self):
+        return self._flagged
+
+    @flagged.setter
+    def flagged(self, value):
+        if not self._flagged and value:
+            MineGrid.ref.flag_count += 1
+        elif self._flagged and not value:
+            MineGrid.ref.flag_count -= 1
+        self._flagged = value
 
     def font_resize(self):
         # dynamically resize font size using its height
@@ -152,6 +164,7 @@ class MineGrid(GridLayout):
         self.first_blood = False
         self.ended = True
         self.reveal_count = 0
+        self.flag_count = 0
         MineGrid.ref = self
 
         # schedule events
@@ -195,6 +208,7 @@ class MineGrid(GridLayout):
     def stats(self, d_time):
         self.timer.value += d_time * .5
         self.revealed.value = self.reveal_count
+        self.flagged.value = self.flag_count
 
     # start a new game
     def new_game(self):
@@ -230,11 +244,13 @@ class MineGrid(GridLayout):
     def generate(self, test_pos=None):
 
         self.revealed.max = self.msize ** 2 - self.mines
+        self.flagged.max = self.mines
 
         self.mine_map = [[None for _ in range(self.msize)] for _ in range(self.msize)]
         self.first_blood = False
         self.ended = False
         self.reveal_count = 0
+        self.flag_count = 0
 
         # generate random coordinates for mines
         coordinates = []
@@ -303,8 +319,11 @@ class MineGrid(GridLayout):
         self.stats_refresh.cancel()
         self.ended = True
         self.reveal_count = 0
+        self.flag_count = 0
         self.revealed.value = 0
         self.revealed.max = 0
+        self.flagged.value = 0
+        self.flagged.max = 0
 
         # show win loss statement
         if win:

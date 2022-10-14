@@ -54,6 +54,7 @@ BoxLayout:
         mines: _mine_slider.value
         timer: _timer
         revealed: _revealed
+        flagged: _flagged
 
         rows: 15
         cols: 15
@@ -73,7 +74,7 @@ BoxLayout:
         # settings control section starts here
         MyLabel:  # title
             markup: True
-            text: "[b]Sweep\nThy\nMines![/b]"
+            text: "[b]Minesweeper[/b]"
             font_size: "35dp"
             size_hint_y: None
             height: 135
@@ -130,3 +131,12 @@ BoxLayout:
 
             markup: True
             text: "[b]Revealed:[/b] " + str(self.value) + " / " + str(self.max)
+
+        MyLabel:
+            id: _flagged
+
+            value: 0
+            max: 0
+
+            markup: True
+            text: "[b]Flagged:[/b] " + str(self.value) + " / " + str(self.max)
